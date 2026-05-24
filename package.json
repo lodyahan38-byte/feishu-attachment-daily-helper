@@ -1,0 +1,1 @@
+{"name":"feishu-attachment-daily-helper","version":"0.1.0","private":true,"type":"module","scripts":{"start":"node api/daily-check.js"},"engines":{"node":"22.x"},"dependencies":{}}
