@@ -38,6 +38,27 @@ function cellText(value) {
   return String(value).trim();
 }
 
+function normalizeDemandTime(value) {
+  const raw = cellText(value);
+  if (!raw) return '';
+
+  // 飞书/电子表格日期有时会被 API 返回为 Excel serial，例如 46101。
+  // Excel serial 1 = 1899-12-31，但需要跳过 1900 闰年 bug，所以用 1899-12-30 作为基准。
+  if (/^\d{5}$/.test(raw)) {
+    const serial = Number(raw);
+    const date = new Date(Date.UTC(1899, 11, 30 + serial));
+    const month = date.getUTCMonth() + 1;
+    const day = date.getUTCDate();
+    return `${month}.${day}`;
+  }
+
+  // 兼容 “3月20日”、“3/20”、“03.20”等写法，统一成 3.20。
+  const match = raw.match(/(\d{1,2})\s*[\.\/月-]\s*(\d{1,2})/);
+  if (match) return `${Number(match[1])}.${Number(match[2])}`;
+
+  return raw;
+}
+
 function normalizeAttachment(value) {
   if (!value) return { name: '', token: '', raw: value };
   const list = Array.isArray(value) ? value : [value];
@@ -225,7 +246,7 @@ async function writeSnapshot(spreadsheetToken, currentState) {
 async function readNamingFields(spreadsheetToken, rowNumber) {
   const row = (await readRange(spreadsheetToken, `${CONFIG.sourceSheetId}!A${rowNumber}:M${rowNumber}`))[0] || [];
   return {
-    demandTime: cellText(row[colToIndex(CONFIG.demandTimeColumn)]),
+    demandTime: normalizeDemandTime(row[colToIndex(CONFIG.demandTimeColumn)]),
     location: cellText(row[colToIndex(CONFIG.locationColumn)]),
     carId: cellText(row[colToIndex(CONFIG.idColumn)]),
     brand: cellText(row[colToIndex(CONFIG.brandColumn)]),
